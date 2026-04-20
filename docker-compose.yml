@@ -1,0 +1,81 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blogcms-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    command: >
+      sh -c "chown -R www-data:www-data storage bootstrap/cache
+      && chmod -R ug+rwX storage bootstrap/cache
+      && if [ ! -f vendor/autoload.php ]; then composer install; fi
+      && php-fpm"
+    networks:
+      - blogcms-network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: blogcms-nginx
+    restart: unless-stopped
+    ports:
+      - "8001:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - blogcms-network
+    depends_on:
+      - app
+
+  node:
+    image: node:20-alpine
+    container_name: blogcms-node
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    ports:
+      - "5173:5173"
+    command: >
+      sh -c "if [ ! -x node_modules/.bin/vite ]; then npm install; fi
+      && npm run dev -- --host 0.0.0.0 --port 5173"
+    networks:
+      - blogcms-network
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: blogcms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: blogcms
+      MYSQL_USER: blogcms_user
+      MYSQL_PASSWORD: blogcms_password
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - blogcms-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql_data:
+  node_modules:
+
+networks:
+  blogcms-network:
+    driver: bridge

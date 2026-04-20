@@ -109,6 +109,21 @@ A gate filter is applied when logging into the admin panel:
 
 ---
 
+### Run with Docker (Laravel + MySQL)
+1. Copy Docker env file: `cp .env.docker.example .env`  
+2. Build & start containers: `docker compose up -d --build`  
+3. Install dependencies in app container: `docker compose exec app composer install`  
+4. Generate app key: `docker compose exec app php artisan key:generate`  
+5. Run migrations: `docker compose exec app php artisan migrate`  
+6. (Optional) Seed sample data: `docker compose exec app php artisan db:seed`  
+7. Open app at [http://localhost:8080](http://localhost:8080)  
+8. Frontend dev server (Vite) runs in Docker at [http://localhost:5173](http://localhost:5173)
+
+To stop containers: `docker compose down`  
+To remove containers + DB volume: `docker compose down -v`
+
+---
+
 ### Demo Account
 - Admin URL: [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)  
 - Email: `admin@example.com`  
